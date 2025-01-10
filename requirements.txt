@@ -1,4 +1,3 @@
 Flask
 praw
-sqlite3
 requests
