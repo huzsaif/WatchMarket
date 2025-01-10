@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Watch Reseller Tool</title>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function (OneSignal) {
+            await OneSignal.init({
+                appId: "1cc3bbe9-5caa-4b19-9105-2413ebb671f8", <!-- Replace with your actual app ID -->
+                
+            });
+        });
+    </script>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Watch Reseller Tool</h1>
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Year</th>
+            <th>Reference Number</th>
+            <th>Size</th>
+            <th>Brand</th>
+        </tr>
+        {% for watch in watches %}
+        <tr onclick="window.location.href='{{ watch[6] }}'">
+            <td>{{ watch[0] }}</td>
+            <td>{{ watch[1] }}</td>
+            <td>{{ watch[2] }}</td>
+            <td>{{ watch[3] }}</td>
+            <td>{{ watch[4] }}</td>
+            <td>{{ watch[5] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
