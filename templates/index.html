@@ -17,25 +17,36 @@
                     size: 'large',
                     position: 'bottom-right',
                 },
+                allowLocalhostAsSecureOrigin: true
             });
-
-            // Debug logging
-            const isPushSupported = await OneSignal.isPushNotificationsSupported();
-            console.log('Push notifications supported:', isPushSupported);
-            
-            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-            console.log('Currently subscribed:', isSubscribed);
         });
 
         async function subscribeToNotifications() {
             try {
-                const result = await OneSignal.registerForPushNotifications();
-                console.log('Registration result:', result);
+                const OneSignal = window.OneSignal;
+                // Request permission and show native prompt
+                const permission = await Notification.requestPermission();
+                console.log('Permission:', permission);
                 
-                const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-                if (isSubscribed) {
-                    document.getElementById('subscribeButton').style.display = 'none';
-                    document.getElementById('subscribeStatus').textContent = 'Successfully subscribed to notifications!';
+                if (permission === 'granted') {
+                    // Show OneSignal prompt
+                    await OneSignal.Slidedown.promptPush();
+                    
+                    // Check subscription status
+                    const isSubscribed = await OneSignal.User.getPushSubscription().optedIn;
+                    console.log('Subscribed:', isSubscribed);
+                    
+                    if (isSubscribed) {
+                        document.getElementById('subscribeButton').style.display = 'none';
+                        document.getElementById('subscribeStatus').textContent = 'Successfully subscribed to notifications!';
+                        
+                        // Get and display User ID
+                        const userId = await OneSignal.User.getOneSignalId();
+                        console.log('OneSignal User ID:', userId);
+                        if (userId) {
+                            document.getElementById('subscribeStatus').textContent += '\nUser ID: ' + userId;
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -53,7 +64,7 @@
                        border-radius: 5px; cursor: pointer; margin: 10px 0;">
             Subscribe to Notifications
         </button>
-        <p id="subscribeStatus"></p>
+        <p id="subscribeStatus" style="white-space: pre-line;"></p>
     </div>
     <table border="1">
         <thead>
