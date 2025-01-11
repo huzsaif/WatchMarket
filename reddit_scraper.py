@@ -9,6 +9,44 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def extract_data(text):
+    # Price: Look for $ followed by numbers
+    price_match = re.search(r'\$(\d+(?:,\d{3})*)', text)
+    price = int(price_match.group(1).replace(',', '')) if price_match else None
+
+    # Year: Look for 4-digit year
+    year_match = re.search(r'\b(19\d{2}|20[0-2]\d)\b', text)
+    year = int(year_match.group(1)) if year_match else None
+
+    # Reference: Look for "Ref." or "Reference" followed by numbers/letters
+    ref_match = re.search(r'(?:Ref(?:erence)?\.?\s*(?:no\.?)?\s*)([A-Za-z0-9.-]+)', text)
+    if not ref_match:
+        # Try finding standalone reference patterns
+        ref_match = re.search(r'\b([A-Z0-9]{4,}(?:-[A-Z0-9]+)*)\b', text)
+    ref_number = ref_match.group(1) if ref_match else None
+
+    # Size: Look for XX mm or XXmm
+    size_match = re.search(r'(\d{2})\s*mm', text)
+    size = int(size_match.group(1)) if size_match else None
+
+    # Brand detection
+    brand = None
+    text_lower = text.lower()
+    if 'rolex' in text_lower:
+        brand = 'Rolex'
+    elif 'omega' in text_lower:
+        brand = 'Omega'
+    elif 'grand seiko' in text_lower:
+        brand = 'Grand Seiko'
+    elif 'seiko' in text_lower:
+        brand = 'Seiko'
+    elif 'tudor' in text_lower:
+        brand = 'Tudor'
+    elif 'casio' in text_lower:
+        brand = 'Casio'
+
+    return price, year, ref_number, size, brand
+
 def scrape_watchexchange():
     logger.info("Starting scrape_watchexchange function")
     
@@ -52,45 +90,28 @@ def scrape_watchexchange():
                 break
                 
             title = submission.title
-            full_text = f"{title}\n{submission.selftext}"
+            selftext = submission.selftext
             
             # Only process [wts] posts
             if '[wts]' not in title.lower() and '[wts/wtt]' not in title.lower():
                 continue
 
-            # Price: Look for $ followed by numbers
-            price_match = re.search(r'\$(\d+(?:,\d{3})*)', full_text)
-            price = int(price_match.group(1).replace(',', '')) if price_match else None
+            # Extract data from title
+            title_price, title_year, title_ref, title_size, title_brand = extract_data(title)
+            logger.info(f"From title - Price: {title_price}, Year: {title_year}, Ref: {title_ref}, Size: {title_size}, Brand: {title_brand}")
 
-            # Year: Look for 4-digit year
-            year_match = re.search(r'\b(19\d{2}|20[0-2]\d)\b', full_text)
-            year = int(year_match.group(1)) if year_match else None
+            # Extract data from selftext
+            selftext_price, selftext_year, selftext_ref, selftext_size, selftext_brand = extract_data(selftext)
+            logger.info(f"From selftext - Price: {selftext_price}, Year: {selftext_year}, Ref: {selftext_ref}, Size: {selftext_size}, Brand: {selftext_brand}")
 
-            # Reference: Look for "Ref." or "Reference" followed by numbers/letters
-            ref_match = re.search(r'(?:Ref(?:erence)?\.?\s*(?:no\.?)?\s*)([A-Za-z0-9.-]+)', full_text)
-            if not ref_match:
-                # Try finding standalone reference patterns
-                ref_match = re.search(r'\b([A-Z0-9]{4,}(?:-[A-Z0-9]+)*)\b', full_text)
-            ref_number = ref_match.group(1) if ref_match else None
+            # Use selftext data if title data is None
+            price = title_price if title_price is not None else selftext_price
+            year = title_year if title_year is not None else selftext_year
+            ref_number = title_ref if title_ref is not None else selftext_ref
+            size = title_size if title_size is not None else selftext_size
+            brand = title_brand if title_brand is not None else selftext_brand
 
-            # Size: Look for XX mm or XXmm
-            size_match = re.search(r'(\d{2})\s*mm', full_text)
-            size = int(size_match.group(1)) if size_match else None
-
-            # Brand detection
-            brand = None
-            if 'rolex' in full_text.lower():
-                brand = 'Rolex'
-            elif 'omega' in full_text.lower():
-                brand = 'Omega'
-            elif 'grand seiko' in full_text.lower():
-                brand = 'Grand Seiko'
-            elif 'seiko' in full_text.lower():
-                brand = 'Seiko'
-            elif 'tudor' in full_text.lower():
-                brand = 'Tudor'
-
-            logger.info(f"Extracted from post - Price: {price}, Year: {year}, Ref: {ref_number}, Size: {size}, Brand: {brand}")
+            logger.info(f"Final data - Price: {price}, Year: {year}, Ref: {ref_number}, Size: {size}, Brand: {brand}")
 
             try:
                 cursor.execute('''
