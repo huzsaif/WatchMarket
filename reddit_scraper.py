@@ -9,51 +9,6 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def extract_price(title):
-    # Look for price patterns like $1,234 or $1234 or $1,234.56
-    price_match = re.search(r'\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+)', title)
-    if price_match:
-        # Remove commas and convert to integer
-        price_str = price_match.group(1).replace(',', '')
-        # Remove decimal points if they exist
-        price_str = price_str.split('.')[0]
-        return int(price_str)
-    return None
-
-def extract_reference(title):
-    # Common Rolex reference patterns
-    ref_patterns = [
-        r'(?:ref|reference|ref\.|reference\.)?\s*(?:no|\#|number)?\.?\s*([\d]{4,6})',  # Basic number
-        r'(?:ref|reference|ref\.|reference\.)?\s*(?:no|\#|number)?\.?\s*([\d\w]{3,8}(?:-[\d\w]+)?)',  # Alphanumeric
-        r'\b([0-9]{3,6}(?:-[0-9A-Z]+)?)\b'  # Numbers with possible suffix
-    ]
-    
-    for pattern in ref_patterns:
-        match = re.search(pattern, title, re.IGNORECASE)
-        if match:
-            ref = match.group(1)
-            # Exclude common false positives
-            if ref.lower() not in ['wts', 'sale', 'sold']:
-                return ref
-    return None
-
-def extract_size(title):
-    # Look for patterns like 41mm or 41 mm
-    size_match = re.search(r'(\d{2})(?:\s*)?mm', title, re.IGNORECASE)
-    if size_match:
-        return int(size_match.group(1))
-    return None
-
-def extract_year(title):
-    # Look for 4-digit years between 1950 and current year
-    year_match = re.search(r'\b(19[5-9]\d|20[0-2]\d)\b', title)
-    if year_match:
-        year = int(year_match.group(1))
-        current_year = datetime.now().year
-        if 1950 <= year <= current_year:
-            return year
-    return None
-
 def scrape_watchexchange():
     logger.info("Starting scrape_watchexchange function")
     
@@ -96,21 +51,27 @@ def scrape_watchexchange():
             if posts_added >= 10:  # Stop after 10 posts
                 break
                 
-            title = submission.title
-            title_lower = title.lower()
+            title = submission.title.lower()
             
             # Only process [wts] posts
-            if '[wts]' not in title_lower and '[wts/wtt]' not in title_lower:
+            if '[wts]' not in title and '[wts/wtt]' not in title:
                 continue
 
-            # Extract information using improved functions
-            price = extract_price(title)
-            year = extract_year(title)
-            ref_number = extract_reference(title)
-            size = extract_size(title)
+            # Extract information
+            price_match = re.search(r'\$(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)', submission.title)
+            price = int(price_match.group(1).replace(',', '')) if price_match else None
+            
+            year_match = re.search(r'\b(19|20)\d{2}\b', submission.title)
+            year = int(year_match.group()) if year_match else None
+            
+            ref_match = re.search(r'\b[a-zA-Z0-9]{3,8}(?:-[a-zA-Z0-9]+)?\b', submission.title)
+            ref_number = ref_match.group() if ref_match else None
+            
+            size_match = re.search(r'\b(\d{2})mm\b', submission.title)
+            size = int(size_match.group(1)) if size_match else None
 
             # Check if it's a Rolex post
-            is_rolex = 'rolex' in title_lower
+            is_rolex = 'rolex' in title
             brand = 'Rolex' if is_rolex else None
 
             try:
@@ -118,16 +79,15 @@ def scrape_watchexchange():
                     INSERT INTO watches 
                     (title, price, year, reference_number, size, brand, link)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (title, price, year, ref_number, size, brand, submission.url))
+                ''', (submission.title, price, year, ref_number, size, brand, submission.url))
                 
                 posts_added += 1
-                logger.info(f"Added post {posts_added}/10: {title}")
-                logger.info(f"Extracted data: Price={price}, Year={year}, Ref={ref_number}, Size={size}")
+                logger.info(f"Added post {posts_added}/10: {submission.title}")
                 
                 # Send notification only for Rolex posts
                 if is_rolex:
-                    logger.info(f"Found Rolex post: {title}")
-                    send_notification(title, price, submission.url, ONESIGNAL_API_URL, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY)
+                    logger.info(f"Found Rolex post: {submission.title}")
+                    send_notification(submission.title, price, submission.url, ONESIGNAL_API_URL, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY)
                 
             except sqlite3.IntegrityError as e:
                 logger.error(f"Database error: {e}")
