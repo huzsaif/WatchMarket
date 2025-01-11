@@ -12,7 +12,23 @@
         OneSignalDeferred.push(async function(OneSignal) {
             await OneSignal.init({
                 appId: "3a92834d-ceb3-400c-8c68-73d52157b773",
+                allowLocalhostAsSecureOrigin: true,
             });
+
+            // Debug logging
+            const isPushSupported = await OneSignal.isPushNotificationsSupported();
+            console.log('Push notifications supported:', isPushSupported);
+            
+            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+            console.log('Currently subscribed:', isSubscribed);
+
+            // Get and log the Player ID
+            const playerId = await OneSignal.getUserId();
+            console.log('Player ID:', playerId);
+            
+            if (playerId) {
+                document.getElementById('playerIdDisplay').textContent = 'Player ID: ' + playerId;
+            }
         });
 
         async function subscribeToNotifications() {
@@ -21,16 +37,24 @@
                 await OneSignal.showSlidedownPrompt();
                 console.log('Prompt shown');
                 
-                // Log subscription status
+                // Get subscription status after prompt
                 const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-                console.log('Subscribed:', isSubscribed);
+                console.log('Subscribed after prompt:', isSubscribed);
+                
+                // Get Player ID after subscription
+                const playerId = await OneSignal.getUserId();
+                console.log('Player ID after subscription:', playerId);
                 
                 if (isSubscribed) {
                     document.getElementById('subscribeButton').style.display = 'none';
                     document.getElementById('subscribeStatus').textContent = 'You are subscribed to notifications!';
+                    if (playerId) {
+                        document.getElementById('playerIdDisplay').textContent = 'Player ID: ' + playerId;
+                    }
                 }
             } catch (error) {
                 console.error('Error:', error);
+                document.getElementById('subscribeStatus').textContent = 'Error: ' + error.message;
             }
         }
     </script>
@@ -45,6 +69,7 @@
             Subscribe to Notifications
         </button>
         <p id="subscribeStatus"></p>
+        <p id="playerIdDisplay" style="font-family: monospace;"></p>
     </div>
     <table border="1">
         <thead>
