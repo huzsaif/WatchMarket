@@ -13,20 +13,6 @@
             await OneSignal.init({
                 appId: "3a92834d-ceb3-400c-8c68-73d52157b773",
             });
-            
-            // Get and display Player ID
-            const playerId = await OneSignal.getUserId();
-            console.log('Player ID:', playerId);
-            
-            // Force prompt to show
-            setTimeout(async () => {
-                const isPushSupported = await OneSignal.isPushNotificationsSupported();
-                if (isPushSupported) {
-                    await OneSignal.showSlidedownPrompt();
-                } else {
-                    console.log("Push notifications are not supported");
-                }
-            }, 2000);
         });
     </script>
 </head>
