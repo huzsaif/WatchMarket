@@ -3,7 +3,11 @@ services:
     name: watch-market
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python run.py
+    startCommand: gunicorn 'run:app'
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9 
+        value: 3.9
+      - key: REDDIT_CLIENT_ID
+        value: your_client_id
+      - key: REDDIT_CLIENT_SECRET
+        value: your_client_secret 

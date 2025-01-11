@@ -15,11 +15,6 @@ def run_scraper():
             print("Retrying in 60 seconds...")
             time.sleep(60)
 
-if __name__ == "__main__":
-    # Start scraper in a background thread
-    scraper_thread = threading.Thread(target=run_scraper, daemon=True)
-    scraper_thread.start()
-    
-    # Start the Flask app
-    port = int(os.environ.get("PORT", 5001))
-    app.run(host="0.0.0.0", port=port) 
+# Start scraper in a background thread when gunicorn loads the app
+scraper_thread = threading.Thread(target=run_scraper, daemon=True)
+scraper_thread.start() 
