@@ -3,20 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watch Database</title>
+    <title>Watch Market</title>
+
+    <!-- Latest OneSignal Web SDK -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
-      OneSignalDeferred.push(async function(OneSignal) {
-        await OneSignal.init({
-          appId: "1cc3bbe9-5caa-4b19-9105-2413ebb671f8",
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.init({
+                appId: "3a92834d-ceb3-400c-8c68-73d52157b773",
+            });
+            
+            // Get and display Player ID
+            const playerId = await OneSignal.getUserId();
+            console.log('Player ID:', playerId);
+            
+            // Force prompt to show
+            setTimeout(async () => {
+                const isPushSupported = await OneSignal.isPushNotificationsSupported();
+                if (isPushSupported) {
+                    await OneSignal.showSlidedownPrompt();
+                } else {
+                    console.log("Push notifications are not supported");
+                }
+            }, 2000);
         });
-      });
     </script>
 </head>
 <body>
-    <h1>Watch Database</h1>
-    <table>
+    <h1>Latest Watch Listings</h1>
+    <div style="margin-bottom: 20px;">
+        <p>Enable notifications to get alerts when new Rolex watches are posted!</p>
+    </div>
+    <table border="1">
         <thead>
             <tr>
                 <th>Title</th>
@@ -29,7 +48,7 @@
         </thead>
         <tbody>
             {% for watch in watches %}
-            <tr onclick="window.open('{{ watch[6] }}', '_blank')">
+            <tr onclick="window.location='{{ watch[6] }}'" style="cursor: pointer;">
                 <td>{{ watch[0] }}</td>
                 <td>{{ watch[1] }}</td>
                 <td>{{ watch[2] }}</td>
