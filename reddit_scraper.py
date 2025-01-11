@@ -46,7 +46,7 @@ def scrape_watchexchange():
         # Get latest posts
         logger.info("Fetching new posts from r/watchexchange")
         subreddit = reddit.subreddit("watchexchange")
-        for submission in subreddit.new(limit=100):  # Increased limit to get more posts
+        for submission in subreddit.new(limit=20):  # Get more than 10 in case some aren't [WTS]
             title = submission.title.lower()
             
             # Only process [wts] posts
@@ -66,25 +66,26 @@ def scrape_watchexchange():
             size_match = re.search(r'\b(\d{2})mm\b', submission.title)
             size = int(size_match.group(1)) if size_match else None
 
-            # Check if it's a Rolex post
+            # Check if it's a Rolex post (for notifications only)
             is_rolex = 'rolex' in title
             brand = 'Rolex' if is_rolex else None
 
-            if is_rolex:
-                logger.info(f"Found Rolex post: {submission.title}")
-                try:
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO watches 
-                        (title, price, year, reference_number, size, brand, link)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (submission.title, price, year, ref_number, size, brand, submission.url))
-                    
-                    # Send notification for new Rolex posts
+            try:
+                # Store all posts, not just Rolex
+                cursor.execute('''
+                    INSERT OR REPLACE INTO watches 
+                    (title, price, year, reference_number, size, brand, link)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (submission.title, price, year, ref_number, size, brand, submission.url))
+                
+                # Send notification only for Rolex posts
+                if is_rolex:
+                    logger.info(f"Found Rolex post: {submission.title}")
                     send_notification(submission.title, price, submission.url, ONESIGNAL_API_URL, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY)
-                    
-                except sqlite3.IntegrityError as e:
-                    logger.error(f"Database error: {e}")
-                    continue
+                
+            except sqlite3.IntegrityError as e:
+                logger.error(f"Database error: {e}")
+                continue
 
         conn.commit()
         logger.info("Database updated successfully")
