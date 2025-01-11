@@ -12,49 +12,39 @@
         OneSignalDeferred.push(async function(OneSignal) {
             await OneSignal.init({
                 appId: "3a92834d-ceb3-400c-8c68-73d52157b773",
-                safari_web_id: "",
-                notifyButton: {
-                    enable: true,
-                    size: 'large',
-                    theme: 'default',
-                    position: 'bottom-right',
-                    showAfterSubscribed: true,
-                },
-                promptOptions: {
-                    slidedown: {
-                        prompts: [
-                            {
-                                type: "push",
-                                autoPrompt: true,
-                                text: {
-                                    actionMessage: "Would you like to receive notifications when new Rolex watches are posted?",
-                                    acceptButton: "Yes",
-                                    cancelButton: "No"
-                                }
-                            }
-                        ]
-                    }
-                }
             });
-
-            // Log subscription status
-            const isPushSupported = await OneSignal.isPushNotificationsSupported();
-            console.log('Push notifications supported:', isPushSupported);
-            
-            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
-            console.log('Currently subscribed:', isSubscribed);
-
-            if (!isSubscribed) {
-                // Show prompt if not subscribed
-                await OneSignal.showSlidedownPrompt();
-            }
         });
+
+        async function subscribeToNotifications() {
+            try {
+                const OneSignal = window.OneSignal;
+                await OneSignal.showSlidedownPrompt();
+                console.log('Prompt shown');
+                
+                // Log subscription status
+                const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+                console.log('Subscribed:', isSubscribed);
+                
+                if (isSubscribed) {
+                    document.getElementById('subscribeButton').style.display = 'none';
+                    document.getElementById('subscribeStatus').textContent = 'You are subscribed to notifications!';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
     </script>
 </head>
 <body>
     <h1>Latest Watch Listings</h1>
     <div style="margin-bottom: 20px;">
         <p>Enable notifications to get alerts when new Rolex watches are posted!</p>
+        <button onclick="subscribeToNotifications()" id="subscribeButton" 
+                style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; 
+                       border-radius: 5px; cursor: pointer; margin: 10px 0;">
+            Subscribe to Notifications
+        </button>
+        <p id="subscribeStatus"></p>
     </div>
     <table border="1">
         <thead>
