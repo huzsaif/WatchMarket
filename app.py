@@ -17,14 +17,13 @@ def home():
     try:
         conn = sqlite3.connect("watches.db")
         cursor = conn.cursor()
-        
-        # Simple query without timestamp ordering
+        # Modified query to sort by newest first
         cursor.execute('''
-            SELECT title, price, year, reference_number, size, brand, link
-            FROM watches
+            SELECT title, price, year, reference_number, size, brand, link 
+            FROM watches 
+            ORDER BY ROWID DESC 
             LIMIT 10
         ''')
-            
         watches = cursor.fetchall()
         return render_template("index.html", watches=watches)
     except Exception as e:
