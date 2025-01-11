@@ -12,7 +12,42 @@
         OneSignalDeferred.push(async function(OneSignal) {
             await OneSignal.init({
                 appId: "3a92834d-ceb3-400c-8c68-73d52157b773",
+                safari_web_id: "",
+                notifyButton: {
+                    enable: true,
+                    size: 'large',
+                    theme: 'default',
+                    position: 'bottom-right',
+                    showAfterSubscribed: true,
+                },
+                promptOptions: {
+                    slidedown: {
+                        prompts: [
+                            {
+                                type: "push",
+                                autoPrompt: true,
+                                text: {
+                                    actionMessage: "Would you like to receive notifications when new Rolex watches are posted?",
+                                    acceptButton: "Yes",
+                                    cancelButton: "No"
+                                }
+                            }
+                        ]
+                    }
+                }
             });
+
+            // Log subscription status
+            const isPushSupported = await OneSignal.isPushNotificationsSupported();
+            console.log('Push notifications supported:', isPushSupported);
+            
+            const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+            console.log('Currently subscribed:', isSubscribed);
+
+            if (!isSubscribed) {
+                // Show prompt if not subscribed
+                await OneSignal.showSlidedownPrompt();
+            }
         });
     </script>
 </head>
