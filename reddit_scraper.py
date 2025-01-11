@@ -90,26 +90,39 @@ def scrape_watchexchange():
                 break
                 
             title = submission.title
-            selftext = submission.selftext
+            post_author = submission.author
             
             # Only process [wts] posts
             if '[wts]' not in title.lower() and '[wts/wtt]' not in title.lower():
                 continue
 
-            # Extract data from title
+            # Extract data from title first
             title_price, title_year, title_ref, title_size, title_brand = extract_data(title)
             logger.info(f"From title - Price: {title_price}, Year: {title_year}, Ref: {title_ref}, Size: {title_size}, Brand: {title_brand}")
 
-            # Extract data from selftext
-            selftext_price, selftext_year, selftext_ref, selftext_size, selftext_brand = extract_data(selftext)
-            logger.info(f"From selftext - Price: {selftext_price}, Year: {selftext_year}, Ref: {selftext_ref}, Size: {selftext_size}, Brand: {selftext_brand}")
+            # Get the author's comment
+            submission.comments.replace_more(limit=None)
+            author_comment = None
+            for comment in submission.comments.list():
+                if comment.author == post_author:
+                    author_comment = comment.body
+                    logger.info("Found author's comment")
+                    break
 
-            # Use selftext data if title data is None
-            price = title_price if title_price is not None else selftext_price
-            year = title_year if title_year is not None else selftext_year
-            ref_number = title_ref if title_ref is not None else selftext_ref
-            size = title_size if title_size is not None else selftext_size
-            brand = title_brand if title_brand is not None else selftext_brand
+            # Extract data from author's comment if found
+            if author_comment:
+                comment_price, comment_year, comment_ref, comment_size, comment_brand = extract_data(author_comment)
+                logger.info(f"From author comment - Price: {comment_price}, Year: {comment_year}, Ref: {comment_ref}, Size: {comment_size}, Brand: {comment_brand}")
+            else:
+                logger.info("No author comment found")
+                comment_price = comment_year = comment_ref = comment_size = comment_brand = None
+
+            # Use comment data if available, otherwise use title data
+            price = comment_price if comment_price is not None else title_price
+            year = comment_year if comment_year is not None else title_year
+            ref_number = comment_ref if comment_ref is not None else title_ref
+            size = comment_size if comment_size is not None else title_size
+            brand = comment_brand if comment_brand is not None else title_brand
 
             logger.info(f"Final data - Price: {price}, Year: {year}, Ref: {ref_number}, Size: {size}, Brand: {brand}")
 
