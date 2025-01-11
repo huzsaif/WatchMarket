@@ -3,6 +3,7 @@ import sqlite3
 import re
 import requests
 import logging
+import os
 from datetime import datetime
 
 # Set up logging
@@ -11,6 +12,10 @@ logger = logging.getLogger(__name__)
 
 def scrape_watchexchange():
     logger.info("Starting scrape_watchexchange function")
+    
+    # Debug: Print current directory and files
+    logger.info(f"Current directory: {os.getcwd()}")
+    logger.info(f"Files in directory: {os.listdir()}")
     
     # Initialize Reddit instance with your credentials
     reddit = praw.Reddit(
@@ -24,23 +29,37 @@ def scrape_watchexchange():
     ONESIGNAL_APP_ID = "3a92834d-ceb3-400c-8c68-73d52157b773"
     ONESIGNAL_API_KEY = "os_v2_app_hkjigtoownaazddiopkscv5xonygya235bcur753ksbmknxrf5sixmu2cswdke5oildjettbfscfvny2qw4c66ewviyrmz3jm5bcc4a"
 
+    # Debug: Print Reddit connection status
+    logger.info("Reddit connection established")
+    
     # Connect to database
-    conn = sqlite3.connect('watches.db')
+    db_path = 'watches.db'
+    logger.info(f"Attempting to connect to database at: {db_path}")
+    
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     try:
-        # Clear existing entries
-        cursor.execute("DELETE FROM watches")
-        conn.commit()
+        # Debug: Print database status before clearing
+        cursor.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='watches'")
+        table_exists = cursor.fetchone()[0]
+        logger.info(f"Watches table exists: {bool(table_exists)}")
+        
+        if table_exists:
+            cursor.execute("SELECT COUNT(*) FROM watches")
+            count_before = cursor.fetchone()[0]
+            logger.info(f"Posts in database before clearing: {count_before}")
 
-        # Create table if it doesn't exist
+        # Clear existing entries
+        cursor.execute("DROP TABLE IF EXISTS watches")
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS watches
+            CREATE TABLE watches
             (title TEXT, price INTEGER, year INTEGER, 
              reference_number TEXT, size INTEGER, brand TEXT,
              link TEXT UNIQUE)
         ''')
         conn.commit()
+        logger.info("Database table recreated")
 
         # Get latest posts
         logger.info("Fetching new posts from r/watchexchange")
@@ -52,9 +71,11 @@ def scrape_watchexchange():
                 break
                 
             title = submission.title.lower()
+            logger.info(f"Processing post: {submission.title}")
             
             # Only process [wts] posts
             if '[wts]' not in title and '[wts/wtt]' not in title:
+                logger.info("Skipping - not a [WTS] post")
                 continue
 
             # Extract information
@@ -94,7 +115,18 @@ def scrape_watchexchange():
                 continue
 
         conn.commit()
-        logger.info(f"Database updated successfully with {posts_added} posts")
+        
+        # Debug: Print final database status
+        cursor.execute("SELECT COUNT(*) FROM watches")
+        final_count = cursor.fetchone()[0]
+        logger.info(f"Final number of posts in database: {final_count}")
+        
+        # Debug: Print all posts in database
+        cursor.execute("SELECT title FROM watches")
+        all_posts = cursor.fetchall()
+        logger.info("Posts in database:")
+        for post in all_posts:
+            logger.info(f"- {post[0]}")
 
     except Exception as e:
         logger.error(f"Error occurred: {e}")
