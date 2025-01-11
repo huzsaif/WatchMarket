@@ -30,7 +30,6 @@ def scrape_watchexchange():
 
     try:
         # Clear existing entries
-        logger.info("Clearing existing database entries")
         cursor.execute("DELETE FROM watches")
         conn.commit()
 
@@ -46,7 +45,12 @@ def scrape_watchexchange():
         # Get latest posts
         logger.info("Fetching new posts from r/watchexchange")
         subreddit = reddit.subreddit("watchexchange")
-        for submission in subreddit.new(limit=20):  # Get more than 10 in case some aren't [WTS]
+        posts_added = 0
+        
+        for submission in subreddit.new(limit=30):  # Higher limit to ensure we get 10 [WTS] posts
+            if posts_added >= 10:  # Stop after 10 posts
+                break
+                
             title = submission.title.lower()
             
             # Only process [wts] posts
@@ -71,12 +75,14 @@ def scrape_watchexchange():
             brand = 'Rolex' if is_rolex else None
 
             try:
-                # Store all posts, not just Rolex
                 cursor.execute('''
-                    INSERT OR REPLACE INTO watches 
+                    INSERT INTO watches 
                     (title, price, year, reference_number, size, brand, link)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (submission.title, price, year, ref_number, size, brand, submission.url))
+                
+                posts_added += 1
+                logger.info(f"Added post {posts_added}/10: {submission.title}")
                 
                 # Send notification only for Rolex posts
                 if is_rolex:
@@ -88,7 +94,7 @@ def scrape_watchexchange():
                 continue
 
         conn.commit()
-        logger.info("Database updated successfully")
+        logger.info(f"Database updated successfully with {posts_added} posts")
 
     except Exception as e:
         logger.error(f"Error occurred: {e}")
