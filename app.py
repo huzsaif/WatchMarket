@@ -1,6 +1,12 @@
 import os
 from flask import Flask, render_template, send_from_directory
 import sqlite3
+from reddit_scraper import scrape_watchexchange
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -15,9 +21,14 @@ def serve_onesignal_sdk():
 @app.route("/")
 def home():
     try:
+        # Run scraper to get latest posts
+        logger.info("Running scraper for fresh data...")
+        scrape_watchexchange()
+        logger.info("Scraper finished, fetching data...")
+
+        # Get the latest posts
         conn = sqlite3.connect("watches.db")
         cursor = conn.cursor()
-        # Modified query to sort by newest first
         cursor.execute('''
             SELECT title, price, year, reference_number, size, brand, link 
             FROM watches 
@@ -27,8 +38,8 @@ def home():
         watches = cursor.fetchall()
         return render_template("index.html", watches=watches)
     except Exception as e:
-        print(f"Database error: {e}")
-        return f"Error accessing database: {str(e)}"
+        logger.error(f"Error: {e}")
+        return f"Error accessing data: {str(e)}"
     finally:
         if 'conn' in locals():
             conn.close()
