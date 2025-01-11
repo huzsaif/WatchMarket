@@ -1,8 +1,16 @@
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 import sqlite3
 
 app = Flask(__name__)
+
+@app.route('/OneSignalSDKWorker.js')
+def serve_onesignal_worker():
+    return send_from_directory('static', 'OneSignalSDKWorker.js')
+
+@app.route('/OneSignalSDK.sw.js')
+def serve_onesignal_sdk():
+    return send_from_directory('static', 'OneSignalSDKWorker.js')
 
 @app.route("/")
 def home():
