@@ -4,6 +4,9 @@ import re
 import requests
 import logging
 from datetime import datetime
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -136,10 +139,20 @@ def scrape_watchexchange():
                 posts_added += 1
                 logger.info(f"Added post {posts_added}/10: {submission.title}")
                 
+                # Enhanced Rolex detection logging
+                logger.info(f"Checking if post is Rolex... Brand detected: {brand}")
+                if 'rolex' in submission.title.lower():
+                    logger.info(f"Found 'Rolex' in title: {submission.title}")
+                
                 # Send notification only for Rolex posts
                 if brand == 'Rolex':
-                    logger.info(f"Found Rolex post: {submission.title}")
+                    logger.info(f"ROLEX ALERT: Found Rolex post!")
+                    logger.info(f"Title: {submission.title}")
+                    logger.info(f"Price: ${price:,}" if price else "Price: Unknown")
+                    logger.info(f"Link: {submission.url}")
+                    logger.info("Attempting to send notification...")
                     send_notification(submission.title, price, submission.url, ONESIGNAL_API_URL, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY)
+                    logger.info("Notification attempt completed")
                 
             except sqlite3.IntegrityError as e:
                 logger.error(f"Database error: {e}")
@@ -154,34 +167,39 @@ def scrape_watchexchange():
     finally:
         conn.close()
 
-def send_notification(title, price, link, api_url, app_id, api_key):
-    headers = {
-        "accept": "application/json",
-        "Authorization": api_key,
-        "content-type": "application/json"
-    }
+def send_notification(title, price, link, *args):  # Keep same function name but ignore OneSignal args
+    sender_email = "1.0.0watchmarket@gmail.com"  # Replace with your Gmail
+    sender_password = "airx unbu ncmf spsv"   # Replace with your Gmail App Password
+    recipient_email = "huzietc@gmail.com"  # Replace with where you want notifications
     
-    price_text = f"${price:,}" if price else "Price unknown"
+    # Create message
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = "New Watch Listed!"
     
-    payload = {
-        "app_id": app_id,
-        "included_segments": ["Total Subscribed Users"],
-        "headings": {"en": "New Watch Listed!"},
-        "contents": {"en": f"{title}\nPrice: {price_text}"},
-        "url": link,
-        "chrome_web_icon": "https://watchmarket.onrender.com/static/logo.png"
-    }
+    # Create email body
+    body = f"""
+    New Watch Listed!
+    
+    {title}
+    Price: ${price:,}
+    Link: {link}
+    """
+    
+    msg.attach(MIMEText(body, 'plain'))
     
     try:
-        response = requests.post(
-            api_url,
-            headers=headers,
-            json=payload
-        )
-        logger.info(f"Notification sent with status code: {response.status_code}")
-        logger.info(f"Response content: {response.text}")
+        # Create server connection
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender_email, sender_password)
+        
+        # Send email
+        server.send_message(msg)
+        server.quit()
+        logger.info("Email notification sent successfully")
     except Exception as e:
-        logger.error(f"Error sending notification: {e}")
+        logger.error(f"Error sending email notification: {e}")
 
 if __name__ == "__main__":
     scrape_watchexchange()
