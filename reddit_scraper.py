@@ -176,13 +176,28 @@ def is_rolex_post(title, brand):
     return False
 
 def send_notification(title, price, link, *args):
-    # Check if this is actually a Rolex post
+    """Send email notification for Rolex posts"""
     if is_rolex_post(title, args[0] if args else None):
-        logger.info("ROLEX ALERT: Found Rolex post!")
-        logger.info(f"Title: {title}")
-        logger.info(f"Price: ${price:,}")
-        logger.info(f"Link: {link}")
-        logger.info(f"Notification would have been sent for: {title}")
+        try:
+            # Hardcoded email configuration
+            sender_email = "1.0.0watchmarket@gmail.com"  # Replace with your Gmail
+            sender_password = "orjz chpx isay darh"   # Replace with your app password
+            receiver_email = "huzietc@gmail.com" # Replace with where you want notifications
+            
+            # Create message
+            msg = MIMEText(f"New Rolex listing found!\n\nTitle: {title}\nPrice: ${price:,}\nLink: {link}")
+            msg['Subject'] = f"Rolex Alert: {title}"
+            msg['From'] = sender_email
+            msg['To'] = receiver_email
+            
+            # Send email
+            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+                server.login(sender_email, sender_password)
+                server.send_message(msg)
+                logger.info(f"Email notification sent for: {title}")
+                
+        except Exception as e:
+            logger.error(f"Failed to send email notification: {str(e)}")
 
 if __name__ == "__main__":
     scrape_watchexchange()
