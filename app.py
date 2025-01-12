@@ -3,6 +3,8 @@ from flask import Flask, render_template, send_from_directory
 import sqlite3
 from reddit_scraper import scrape_watchexchange
 import logging
+import schedule
+import time
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -43,6 +45,14 @@ def home():
     finally:
         if 'conn' in locals():
             conn.close()
+
+def schedule_scraper():
+    # Schedule the scraper to run every 10 minutes instead of every second
+    schedule.every(10).minutes.do(run_scraper)
+    
+    while True:
+        schedule.run_pending()
+        time.sleep(1)  # Sleep for 1 second between schedule checks
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
