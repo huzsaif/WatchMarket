@@ -139,20 +139,13 @@ def scrape_watchexchange():
                 posts_added += 1
                 logger.info(f"Added post {posts_added}/10: {submission.title}")
                 
-                # Enhanced Rolex detection logging
-                logger.info(f"Checking if post is Rolex... Brand detected: {brand}")
-                if 'rolex' in submission.title.lower():
-                    logger.info(f"Found 'Rolex' in title: {submission.title}")
-                
-                # Send notification only for Rolex posts
-                if brand == 'Rolex':
+                # Send notification ONLY for Rolex posts - strict check
+                if brand == 'Rolex' and 'rolex' in submission.title.lower():
                     logger.info(f"ROLEX ALERT: Found Rolex post!")
                     logger.info(f"Title: {submission.title}")
                     logger.info(f"Price: ${price:,}" if price else "Price: Unknown")
                     logger.info(f"Link: {submission.url}")
-                    logger.info("Attempting to send notification...")
                     send_notification(submission.title, price, submission.url, ONESIGNAL_API_URL, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY)
-                    logger.info("Notification attempt completed")
                 
             except sqlite3.IntegrityError as e:
                 logger.error(f"Database error: {e}")
