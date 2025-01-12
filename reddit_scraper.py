@@ -88,12 +88,12 @@ def scrape_watchexchange():
         subreddit = reddit.subreddit("watchexchange")
         posts_added = 0
         
-        for submission in subreddit.new(limit=30):
+        for post in subreddit.new(limit=10):
             if posts_added >= 10:
                 break
                 
-            title = submission.title
-            post_author = submission.author
+            title = post.title
+            post_author = post.author
             
             # Only process [wts] posts
             if '[wts]' not in title.lower() and '[wts/wtt]' not in title.lower():
@@ -104,9 +104,9 @@ def scrape_watchexchange():
             logger.info(f"From title - Price: {title_price}, Year: {title_year}, Ref: {title_ref}, Size: {title_size}, Brand: {title_brand}")
 
             # Get the author's comment
-            submission.comments.replace_more(limit=None)
+            post.comments.replace_more(limit=None)
             author_comment = None
-            for comment in submission.comments.list():
+            for comment in post.comments.list():
                 if comment.author == post_author:
                     author_comment = comment.body
                     logger.info("Found author's comment")
@@ -134,18 +134,18 @@ def scrape_watchexchange():
                     INSERT INTO watches 
                     (title, price, year, reference_number, size, brand, link)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (submission.title, price, year, ref_number, size, brand, submission.url))
+                ''', (post.title, price, year, ref_number, size, brand, f"https://www.reddit.com{post.permalink}"))
                 
                 posts_added += 1
-                logger.info(f"Added post {posts_added}/10: {submission.title}")
+                logger.info(f"Added post {posts_added}/10: {post.title}")
                 
                 # Send notification ONLY for Rolex posts - strict check
-                if brand == 'Rolex' and 'rolex' in submission.title.lower():
+                if brand == 'Rolex' and 'rolex' in post.title.lower():
                     logger.info(f"ROLEX ALERT: Found Rolex post!")
-                    logger.info(f"Title: {submission.title}")
+                    logger.info(f"Title: {post.title}")
                     logger.info(f"Price: ${price:,}" if price else "Price: Unknown")
-                    logger.info(f"Link: {submission.url}")
-                    send_notification(submission.title, price, submission.url, ONESIGNAL_API_URL, ONESIGNAL_APP_ID, ONESIGNAL_API_KEY)
+                    logger.info(f"Link: {f'https://www.reddit.com{post.permalink}'}")
+                    send_notification(post.title, price, f"https://www.reddit.com{post.permalink}", brand)
                 
             except sqlite3.IntegrityError as e:
                 logger.error(f"Database error: {e}")
@@ -160,10 +160,29 @@ def scrape_watchexchange():
     finally:
         conn.close()
 
+def is_rolex_post(title, brand):
+    """Check if post is specifically for a Rolex watch (not Tudor)"""
+    # Convert title to lowercase for case-insensitive matching
+    title_lower = title.lower()
+    
+    # Only match actual Rolex posts, not Tudor
+    if brand == "Rolex" and "tudor" not in title_lower:
+        return True
+        
+    # For title-only matching, be more strict
+    if "rolex" in title_lower and "tudor" not in title_lower:
+        return True
+        
+    return False
+
 def send_notification(title, price, link, *args):
-    # Temporarily disabled email notifications
-    logger.info(f"Notification would have been sent for: {title}")
-    pass
+    # Check if this is actually a Rolex post
+    if is_rolex_post(title, args[0] if args else None):
+        logger.info("ROLEX ALERT: Found Rolex post!")
+        logger.info(f"Title: {title}")
+        logger.info(f"Price: ${price:,}")
+        logger.info(f"Link: {link}")
+        logger.info(f"Notification would have been sent for: {title}")
 
 if __name__ == "__main__":
     scrape_watchexchange()
