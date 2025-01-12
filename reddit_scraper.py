@@ -180,9 +180,9 @@ def send_notification(title, price, link, *args):
     if is_rolex_post(title, args[0] if args else None):
         try:
             # Hardcoded email configuration
-            sender_email = "your_email@gmail.com"  # Your Gmail
-            sender_password = "your_app_password"   # Your app password
-            receiver_email = "your_email@gmail.com" # Where to send notifications
+            sender_email = "1.0.0watchmarket@gmail.com"  # Your Gmail
+            sender_password = "orjz chpx isay darh"   # Your app password
+            receiver_email = "huzietc@gmail.com" # Where to send notifications
             
             # Handle case where price might be None
             price_str = f"${price:,}" if price is not None else "Price not listed"
