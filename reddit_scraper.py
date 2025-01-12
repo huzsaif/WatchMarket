@@ -157,7 +157,7 @@ def scrape_watchexchange():
 def send_notification(title, price, link, api_url, app_id, api_key):
     headers = {
         "accept": "application/json",
-        "Authorization": f"Basic {api_key}",
+        "Authorization": api_key,
         "content-type": "application/json"
     }
     
@@ -165,9 +165,11 @@ def send_notification(title, price, link, api_url, app_id, api_key):
     
     payload = {
         "app_id": app_id,
-        "included_segments": ["Subscribed Users"],
-        "contents": {"en": f"New Rolex Listed: {title}\nPrice: {price_text}"},
-        "url": link
+        "included_segments": ["Total Subscribed Users"],
+        "headings": {"en": "New Watch Listed!"},
+        "contents": {"en": f"{title}\nPrice: {price_text}"},
+        "url": link,
+        "chrome_web_icon": "https://watchmarket.onrender.com/static/logo.png"
     }
     
     try:
@@ -177,6 +179,7 @@ def send_notification(title, price, link, api_url, app_id, api_key):
             json=payload
         )
         logger.info(f"Notification sent with status code: {response.status_code}")
+        logger.info(f"Response content: {response.text}")
     except Exception as e:
         logger.error(f"Error sending notification: {e}")
 
