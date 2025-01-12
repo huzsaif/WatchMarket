@@ -160,39 +160,10 @@ def scrape_watchexchange():
     finally:
         conn.close()
 
-def send_notification(title, price, link, *args):  # Keep same function name but ignore OneSignal args
-    sender_email = "1.0.0watchmarket@gmail.com"  # Replace with your Gmail
-    sender_password = "airx unbu ncmf spsv"   # Replace with your Gmail App Password
-    recipient_email = "huzietc@gmail.com"  # Replace with where you want notifications
-    
-    # Create message
-    msg = MIMEMultipart()
-    msg['From'] = sender_email
-    msg['To'] = recipient_email
-    msg['Subject'] = "New Watch Listed!"
-    
-    # Create email body
-    body = f"""
-    New Watch Listed!
-    
-    {title}
-    Price: ${price:,}
-    Link: {link}
-    """
-    
-    msg.attach(MIMEText(body, 'plain'))
-    
-    try:
-        # Create server connection
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(sender_email, sender_password)
-        
-        # Send email
-        server.send_message(msg)
-        server.quit()
-        logger.info("Email notification sent successfully")
-    except Exception as e:
-        logger.error(f"Error sending email notification: {e}")
+def send_notification(title, price, link, *args):
+    # Temporarily disabled email notifications
+    logger.info(f"Notification would have been sent for: {title}")
+    pass
 
 if __name__ == "__main__":
     scrape_watchexchange()
