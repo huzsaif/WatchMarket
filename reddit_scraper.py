@@ -202,5 +202,37 @@ def send_notification(title, price, link, *args):
         except Exception as e:
             logger.error(f"Failed to send email notification: {str(e)}")
 
+def get_database_posts():
+    """Retrieve posts from the database"""
+    try:
+        conn = sqlite3.connect('watches.db')
+        cursor = conn.cursor()
+        
+        # Get the 50 most recent posts
+        cursor.execute('''
+            SELECT title, price, brand, size, link 
+            FROM posts 
+            ORDER BY id DESC 
+            LIMIT 50
+        ''')
+        
+        # Convert to list of dictionaries
+        posts = []
+        for row in cursor.fetchall():
+            posts.append({
+                'title': row[0],
+                'price': row[1],
+                'brand': row[2],
+                'size': row[3],
+                'link': row[4]
+            })
+            
+        conn.close()
+        return posts
+        
+    except Exception as e:
+        logger.error(f"Failed to retrieve posts from database: {str(e)}")
+        return []
+
 if __name__ == "__main__":
     scrape_watchexchange()
