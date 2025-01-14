@@ -234,5 +234,34 @@ def get_database_posts():
         logger.error(f"Failed to retrieve posts from database: {str(e)}")
         return []
 
+def init_database():
+    """Initialize the database and create tables if they don't exist"""
+    try:
+        conn = sqlite3.connect('watches.db')
+        cursor = conn.cursor()
+        
+        # Create posts table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                price REAL,
+                brand TEXT,
+                size INTEGER,
+                link TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        logger.info("Database initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {str(e)}")
+
+# Call init_database when the module is loaded
+init_database()
+
 if __name__ == "__main__":
     scrape_watchexchange()
