@@ -1,2 +1,2 @@
-web: gunicorn app:app
-worker: python run.py 
+web: gunicorn app:app --bind 0.0.0.0:10000
+worker: python run.py

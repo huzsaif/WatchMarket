@@ -103,8 +103,8 @@ def scrape_watchexchange():
     
     try:
         reddit = praw.Reddit(
-            client_id=os.environ.get('796nqtKpzmGTsgPaL8v9eA'),
-            client_secret=os.environ.get('JqQTxcEkhFduFzwmXG-ND2cV9UXeWw"'),
+            client_id="796nqtKpzmGTsgPaL8v9eA",
+            client_secret="JqQTxcEkhFduFzwmXG-ND2cV9UXeWw",
             user_agent="WatchExchange Scraper v1.0"
         )
         
