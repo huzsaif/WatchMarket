@@ -4,6 +4,7 @@ import logging
 import sqlite3
 import smtplib
 from email.mime.text import MIMEText
+import re
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -114,34 +115,22 @@ def scrape_watchexchange():
         conn = sqlite3.connect('watches.db')
         cursor = conn.cursor()
         
-        # Create table if it doesn't exist
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT,
-                price REAL,
-                size INTEGER,
-                brand TEXT,
-                link TEXT,
-                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
         post_count = 0
         for post in subreddit.new(limit=10):
             title = post.title
             
-            # Extract data from title
+            # Extract initial data from title
             price = extract_price(title)
             size = extract_size(title)
             brand = extract_brand(title)
             
-            # Get author's comment
+            # Get author's comment for additional details
             post.comments.replace_more(limit=0)
             author_comment = None
             for comment in post.comments:
                 if comment.author == post.author:
                     author_comment = comment.body
+                    logger.info(f"Found author comment for post: {title}")
                     break
             
             # If we found author's comment, try to extract missing info
@@ -155,6 +144,12 @@ def scrape_watchexchange():
             
             post_link = f"https://www.reddit.com{post.permalink}"
             
+            # Log extracted information
+            logger.info(f"Extracted data - Title: {title}")
+            logger.info(f"Price: ${price if price else 'Not found'}")
+            logger.info(f"Size: {size}mm" if size else "Size: Not found")
+            logger.info(f"Brand: {brand if brand else 'Not found'}")
+            
             # Check if post already exists
             cursor.execute('SELECT id FROM posts WHERE link = ?', (post_link,))
             if cursor.fetchone() is None:
@@ -165,10 +160,9 @@ def scrape_watchexchange():
                 ''', (title, price, size, brand, post_link))
                 
                 post_count += 1
-                logger.info(f"Added post {post_count}: {title}")
                 
                 # Send notification if it's a Rolex post
-                if is_rolex_post(title, brand):
+                if brand == 'Rolex':
                     send_notification(title, price, post_link, brand)
         
         conn.commit()
@@ -183,78 +177,96 @@ def scrape_watchexchange():
 def extract_price(text):
     """Extract price from text using various patterns"""
     text = text.lower()
-    price = None
     
-    # Common price patterns
-    price_indicators = ['$', 'price:', 'asking', 'shipped']
-    
+    # Split into lines and process each line
     for line in text.split('\n'):
-        # Look for $ pattern first
-        dollar_index = line.find('$')
-        if dollar_index != -1:
-            # Extract numbers after $
-            price_str = ''
-            for char in line[dollar_index + 1:]:
-                if char.isdigit() or char == ',':
-                    price_str += char
-                elif char == '.':
-                    break  # Stop at decimal point
-                elif price_str:  # If we've started collecting digits but hit non-digit
-                    break
-            if price_str:
+        # Look for $ pattern
+        if '$' in line:
+            try:
+                # Find the $ and get the subsequent number
+                dollar_index = line.find('$')
+                price_text = ''
+                for char in line[dollar_index + 1:]:
+                    if char.isdigit() or char == ',':
+                        price_text += char
+                    elif char == '.':
+                        break
+                    elif price_text and not char.isdigit():
+                        break
+                if price_text:
+                    return float(price_text.replace(',', ''))
+            except ValueError:
+                continue
+        
+        # Look for price keywords
+        price_keywords = ['price:', 'asking', 'asking price:', 'price is']
+        for keyword in price_keywords:
+            if keyword in line:
                 try:
-                    return float(price_str.replace(',', ''))
+                    # Extract numbers from the line
+                    numbers = ''.join(char for char in line if char.isdigit() or char == ',')
+                    if numbers:
+                        return float(numbers.replace(',', ''))
                 except ValueError:
                     continue
-        
-        # Look for price indicators
-        for indicator in price_indicators:
-            if indicator in line:
-                # Find numbers in the line
-                price_str = ''
-                for char in line:
-                    if char.isdigit() or char == ',':
-                        price_str += char
-                if price_str:
-                    try:
-                        return float(price_str.replace(',', ''))
-                    except ValueError:
-                        continue
     
-    return price
+    return None
 
 def extract_size(text):
     """Extract watch size from text"""
     text = text.lower()
-    size = None
     
-    # Look for patterns like "40mm" or "40 mm"
+    # Common size patterns
+    patterns = [
+        r'(\d{2})mm',  # matches: 40mm
+        r'(\d{2}) mm', # matches: 40 mm
+        r'size:?\s*(\d{2})',  # matches: size: 40 or size 40
+        r'(\d{2})\s*millimeter',  # matches: 40 millimeter
+    ]
+    
     for line in text.split('\n'):
-        if 'mm' in line:
-            words = line.split()
-            for i, word in enumerate(words):
-                if 'mm' in word:
-                    # Check if the size is in the same word (e.g., "40mm")
-                    size_str = word.replace('mm', '').strip()
-                    if size_str.isdigit():
-                        return int(size_str)
-                    # Check previous word (e.g., "40 mm")
-                    elif i > 0 and words[i-1].isdigit():
-                        return int(words[i-1])
+        # Look for common size indicators
+        if 'mm' in line or 'size' in line or 'case' in line:
+            # Extract all numbers from the line
+            numbers = [int(n) for n in re.findall(r'\d+', line)]
+            # Filter likely case sizes (between 20 and 60mm)
+            valid_sizes = [n for n in numbers if 20 <= n <= 60]
+            if valid_sizes:
+                return valid_sizes[0]
     
-    return size
+    return None
 
 def extract_brand(text):
     """Extract watch brand from text"""
-    common_brands = [
-        'Rolex', 'Omega', 'Seiko', 'Tudor', 'Tag Heuer', 'Cartier', 'IWC',
-        'Patek Philippe', 'Audemars Piguet', 'Longines', 'Tissot', 'Hamilton',
-        'Grand Seiko', 'Oris', 'Breitling', 'Panerai', 'Zenith', 'Sinn'
-    ]
+    # List of common watch brands (add more as needed)
+    brands = {
+        'rolex': 'Rolex',
+        'omega': 'Omega',
+        'seiko': 'Seiko',
+        'tudor': 'Tudor',
+        'cartier': 'Cartier',
+        'iwc': 'IWC',
+        'panerai': 'Panerai',
+        'patek': 'Patek Philippe',
+        'audemars': 'Audemars Piguet',
+        'ap': 'Audemars Piguet',
+        'breitling': 'Breitling',
+        'tag': 'Tag Heuer',
+        'heuer': 'Tag Heuer',
+        'longines': 'Longines',
+        'tissot': 'Tissot',
+        'oris': 'Oris',
+        'zenith': 'Zenith',
+        'hamilton': 'Hamilton',
+        'grand seiko': 'Grand Seiko',
+        'gs': 'Grand Seiko'
+    }
     
     text = text.lower()
-    for brand in common_brands:
-        if brand.lower() in text:
-            return brand
     
+    # First try to match exact brand names
+    for brand_key, brand_name in brands.items():
+        if brand_key in text:
+            return brand_name
+            
     return None
