@@ -54,29 +54,17 @@ def send_notification(title, price, link, *args):
 def get_database_posts():
     """Retrieve posts from the database"""
     try:
+        # Initialize database first
+        init_database()
+        
         conn = sqlite3.connect('watches.db')
         cursor = conn.cursor()
-        
-        # Create table if it doesn't exist
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS posts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT,
-                price REAL,
-                year INTEGER,
-                ref TEXT,
-                size INTEGER,
-                brand TEXT,
-                link TEXT
-            )
-        ''')
-        conn.commit()
         
         # Get the 50 most recent posts
         cursor.execute('''
             SELECT title, price, brand, size, link 
             FROM posts 
-            ORDER BY id DESC 
+            ORDER BY timestamp DESC 
             LIMIT 50
         ''')
         
@@ -98,11 +86,42 @@ def get_database_posts():
         logger.error(f"Failed to retrieve posts from database: {str(e)}")
         return []
 
+def init_database():
+    """Initialize the database and create tables if they don't exist"""
+    try:
+        conn = sqlite3.connect('watches.db')
+        cursor = conn.cursor()
+        
+        # Create posts table if it doesn't exist
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                price REAL,
+                size INTEGER,
+                brand TEXT,
+                link TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        logger.info("Database initialized successfully")
+        
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        if 'conn' in locals():
+            conn.close()
+
 def scrape_watchexchange():
     """Scrape r/watchexchange for posts"""
     logger.info("Starting scrape_watchexchange function")
     
     try:
+        # Initialize database first
+        init_database()
+        
         reddit = praw.Reddit(
             client_id="796nqtKpzmGTsgPaL8v9eA",
             client_secret="JqQTxcEkhFduFzwmXG-ND2cV9UXeWw",
