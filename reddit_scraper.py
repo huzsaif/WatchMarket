@@ -270,22 +270,30 @@ def extract_brand(text):
         'audemars': 'Audemars Piguet',
         'ap': 'Audemars Piguet',
         'breitling': 'Breitling',
-        'tag': 'Tag Heuer',
-        'heuer': 'Tag Heuer',
+        'tag heuer': 'Tag Heuer',
         'longines': 'Longines',
         'tissot': 'Tissot',
         'oris': 'Oris',
         'zenith': 'Zenith',
         'hamilton': 'Hamilton',
         'grand seiko': 'Grand Seiko',
-        'gs': 'Grand Seiko'
+        'citizen': 'Citizen',
+        'sinn': 'Sinn',
+        'jlc': 'Jaeger-LeCoultre',
+        'jaeger': 'Jaeger-LeCoultre',
+        'christopher ward': 'Christopher Ward'
     }
     
     text = text.lower()
     
-    # First try to match exact brand names
+    # First check for exact matches in title (more reliable)
     for brand_key, brand_name in brands.items():
-        if brand_key in text:
+        if f'[wts] {brand_key}' in text or f'[wts]{brand_key}' in text:
+            return brand_name
+    
+    # Then check for general matches
+    for brand_key, brand_name in brands.items():
+        if brand_key in text.split():  # Only match whole words
             return brand_name
             
     return None

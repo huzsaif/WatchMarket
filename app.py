@@ -12,3 +12,7 @@ def index():
 def get_posts():
     posts = get_database_posts()
     return jsonify(posts)
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
