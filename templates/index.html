@@ -1,94 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watch Market</title>
-
-    <!-- Latest OneSignal Web SDK -->
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-    <script>
-        window.OneSignalDeferred = window.OneSignalDeferred || [];
-        OneSignalDeferred.push(async function(OneSignal) {
-            await OneSignal.init({
-                appId: "3a92834d-ceb3-400c-8c68-73d52157b773",
-                notifyButton: {
-                    enable: true,
-                    size: 'large',
-                    position: 'bottom-right',
-                },
-                allowLocalhostAsSecureOrigin: true
-            });
-        });
-
-        async function subscribeToNotifications() {
-            try {
-                const OneSignal = window.OneSignal;
-                // Request permission and show native prompt
-                const permission = await Notification.requestPermission();
-                console.log('Permission:', permission);
-                
-                if (permission === 'granted') {
-                    // Show OneSignal prompt
-                    await OneSignal.Slidedown.promptPush();
-                    
-                    // Check subscription status
-                    const isSubscribed = await OneSignal.User.getPushSubscription().optedIn;
-                    console.log('Subscribed:', isSubscribed);
-                    
-                    if (isSubscribed) {
-                        document.getElementById('subscribeButton').style.display = 'none';
-                        document.getElementById('subscribeStatus').textContent = 'Successfully subscribed to notifications!';
-                        
-                        // Get and display User ID
-                        const userId = await OneSignal.User.getOneSignalId();
-                        console.log('OneSignal User ID:', userId);
-                        if (userId) {
-                            document.getElementById('subscribeStatus').textContent += '\nUser ID: ' + userId;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('subscribeStatus').textContent = 'Error: ' + error.message;
-            }
-        }
-    </script>
+    <title>Watch Listings</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f5f5f5; }
+    </style>
 </head>
 <body>
-    <h1>Latest Watch Listings</h1>
-    <div style="margin-bottom: 20px;">
-        <p>Enable notifications to get alerts when new Rolex watches are posted!</p>
-        <button onclick="subscribeToNotifications()" id="subscribeButton" 
-                style="padding: 10px 20px; background-color: #4CAF50; color: white; border: none; 
-                       border-radius: 5px; cursor: pointer; margin: 10px 0;">
-            Subscribe to Notifications
-        </button>
-        <p id="subscribeStatus" style="white-space: pre-line;"></p>
-    </div>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Price</th>
-                <th>Year</th>
-                <th>Reference Number</th>
-                <th>Size</th>
-                <th>Brand</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for watch in watches %}
-            <tr onclick="window.location='{{ watch[6] }}'" style="cursor: pointer;">
-                <td>{{ watch[0] }}</td>
-                <td>{{ watch[1] }}</td>
-                <td>{{ watch[2] }}</td>
-                <td>{{ watch[3] }}</td>
-                <td>{{ watch[4] }}</td>
-                <td>{{ watch[5] }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
+    <h1>Recent Watch Listings</h1>
+    <p>Last updated: {{ last_update }}</p>
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Price</th>
+            <th>Brand</th>
+            <th>Size</th>
+            <th>Link</th>
+        </tr>
+        {% for post in posts %}
+        <tr>
+            <td>{{ post.title }}</td>
+            <td>${{ post.price if post.price else 'N/A' }}</td>
+            <td>{{ post.brand if post.brand else 'N/A' }}</td>
+            <td>{{ post.size if post.size else 'N/A' }}</td>
+            <td><a href="{{ post.link }}" target="_blank">View Post</a></td>
+        </tr>
+        {% endfor %}
     </table>
 </body>
 </html>
