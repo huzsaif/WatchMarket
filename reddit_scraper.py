@@ -103,8 +103,8 @@ def scrape_watchexchange():
     
     try:
         reddit = praw.Reddit(
-            client_id=os.environ.get('REDDIT_CLIENT_ID'),
-            client_secret=os.environ.get('REDDIT_CLIENT_SECRET'),
+            client_id=os.environ.get('796nqtKpzmGTsgPaL8v9eA'),
+            client_secret=os.environ.get('JqQTxcEkhFduFzwmXG-ND2cV9UXeWw"'),
             user_agent="WatchExchange Scraper v1.0"
         )
         
@@ -120,28 +120,21 @@ def scrape_watchexchange():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT,
                 price REAL,
-                year INTEGER,
-                ref TEXT,
                 size INTEGER,
                 brand TEXT,
-                link TEXT
+                link TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
         
         post_count = 0
         for post in subreddit.new(limit=10):
-            post_count += 1
             title = post.title
             
-            # Initialize variables
-            price = None
-            year = None
-            ref = None
-            size = None
-            brand = None
-            
             # Extract data from title
-            logger.info(f"From title - Price: {price}, Year: {year}, Ref: {ref}, Size: {size}, Brand: {brand}")
+            price = extract_price(title)
+            size = extract_size(title)
+            brand = extract_brand(title)
             
             # Get author's comment
             post.comments.replace_more(limit=0)
@@ -149,38 +142,119 @@ def scrape_watchexchange():
             for comment in post.comments:
                 if comment.author == post.author:
                     author_comment = comment.body
-                    logger.info("Found author's comment")
                     break
             
+            # If we found author's comment, try to extract missing info
             if author_comment:
-                # Extract data from author's comment
-                logger.info(f"From author comment - Price: {price}, Year: {year}, Ref: {ref}, Size: {size}, Brand: {brand}")
-            else:
-                logger.info("No author comment found")
+                if price is None:
+                    price = extract_price(author_comment)
+                if size is None:
+                    size = extract_size(author_comment)
+                if brand is None:
+                    brand = extract_brand(author_comment)
             
-            # Use the best available data
-            logger.info(f"Final data - Price: {price}, Year: {year}, Ref: {ref}, Size: {size}, Brand: {brand}")
-            
-            # Always use the post's permalink for the correct link
             post_link = f"https://www.reddit.com{post.permalink}"
             
-            # Insert into database
-            cursor.execute('''
-                INSERT INTO posts (title, price, year, ref, size, brand, link)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (title, price, year, ref, size, brand, post_link))
-            
-            logger.info(f"Added post {post_count}/10: {title}")
-            
-            # Send notification if it's a Rolex post
-            if is_rolex_post(title, brand):
-                send_notification(title, price, post_link, brand)
+            # Check if post already exists
+            cursor.execute('SELECT id FROM posts WHERE link = ?', (post_link,))
+            if cursor.fetchone() is None:
+                # Insert into database
+                cursor.execute('''
+                    INSERT INTO posts (title, price, size, brand, link)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (title, price, size, brand, post_link))
+                
+                post_count += 1
+                logger.info(f"Added post {post_count}: {title}")
+                
+                # Send notification if it's a Rolex post
+                if is_rolex_post(title, brand):
+                    send_notification(title, price, post_link, brand)
         
         conn.commit()
-        logger.info(f"Database updated successfully with {post_count} posts")
+        logger.info(f"Database updated successfully with {post_count} new posts")
         conn.close()
         
     except Exception as e:
         logger.error(f"Error in scrape_watchexchange: {str(e)}")
         if 'conn' in locals():
             conn.close()
+
+def extract_price(text):
+    """Extract price from text using various patterns"""
+    text = text.lower()
+    price = None
+    
+    # Common price patterns
+    price_indicators = ['$', 'price:', 'asking', 'shipped']
+    
+    for line in text.split('\n'):
+        # Look for $ pattern first
+        dollar_index = line.find('$')
+        if dollar_index != -1:
+            # Extract numbers after $
+            price_str = ''
+            for char in line[dollar_index + 1:]:
+                if char.isdigit() or char == ',':
+                    price_str += char
+                elif char == '.':
+                    break  # Stop at decimal point
+                elif price_str:  # If we've started collecting digits but hit non-digit
+                    break
+            if price_str:
+                try:
+                    return float(price_str.replace(',', ''))
+                except ValueError:
+                    continue
+        
+        # Look for price indicators
+        for indicator in price_indicators:
+            if indicator in line:
+                # Find numbers in the line
+                price_str = ''
+                for char in line:
+                    if char.isdigit() or char == ',':
+                        price_str += char
+                if price_str:
+                    try:
+                        return float(price_str.replace(',', ''))
+                    except ValueError:
+                        continue
+    
+    return price
+
+def extract_size(text):
+    """Extract watch size from text"""
+    text = text.lower()
+    size = None
+    
+    # Look for patterns like "40mm" or "40 mm"
+    for line in text.split('\n'):
+        if 'mm' in line:
+            words = line.split()
+            for i, word in enumerate(words):
+                if 'mm' in word:
+                    # Check if the size is in the same word (e.g., "40mm")
+                    size_str = word.replace('mm', '').strip()
+                    if size_str.isdigit():
+                        return int(size_str)
+                    # Check previous word (e.g., "40 mm")
+                    elif i > 0 and words[i-1].isdigit():
+                        return int(words[i-1])
+    
+    return size
+
+def extract_brand(text):
+    """Extract watch brand from text"""
+    common_brands = [
+        'Rolex', 'Omega', 'Seiko', 'Tudor', 'Tag Heuer', 'Cartier', 'IWC',
+        'Patek Philippe', 'Audemars Piguet', 'Longines', 'Tissot', 'Hamilton',
+        'Grand Seiko', 'Oris', 'Breitling', 'Panerai', 'Zenith', 'Sinn'
+    ]
+    
+    text = text.lower()
+    for brand in common_brands:
+        if brand.lower() in text:
+            return brand
+    
+    return None
